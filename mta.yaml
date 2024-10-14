@@ -1,0 +1,92 @@
+_schema-version: "3.2"
+ID: zmanage_app
+version: 0.0.1
+modules:
+- name: zmanage_app-destination-content
+  type: com.sap.application.content
+  requires:
+  - name: zmanage_app-destination-service
+    parameters:
+      content-target: true
+  - name: zmanage_app_html_repo_host
+    parameters:
+      service-key:
+        name: zmanage_app_html_repo_host-key
+  - name: uaa_zmanage_app
+    parameters:
+      service-key:
+        name: uaa_zmanage_app-key
+  parameters:
+    content:
+      instance:
+        destinations:
+        - Name: manageRouter_zmanage_app_html_repo_host
+          ServiceInstanceName: zmanage_app-html5-app-host-service
+          ServiceKeyName: zmanage_app_html_repo_host-key
+          sap.cloud.service: manageRouter
+        - Authentication: OAuth2UserTokenExchange
+          Name: manageRouter_uaa_zmanage_app
+          ServiceInstanceName: zmanage_app-xsuaa-service
+          ServiceKeyName: uaa_zmanage_app-key
+          sap.cloud.service: manageRouter
+        existing_destinations_policy: ignore
+  build-parameters:
+    no-source: true
+- name: zmanage_app-app-content
+  type: com.sap.application.content
+  path: .
+  requires:
+  - name: zmanage_app_html_repo_host
+    parameters:
+      content-target: true
+  build-parameters:
+    build-result: resources
+    requires:
+    - artifacts:
+      - commanageduimanage.zip
+      name: commanageduimanage
+      target-path: resources/
+- name: commanageduimanage
+  type: html5
+  path: uimanage
+  build-parameters:
+    build-result: dist
+    builder: custom
+    commands:
+    - npm install
+    - npm run build:cf
+    supported-platforms: []
+resources:
+- name: zmanage_app-destination-service
+  type: org.cloudfoundry.managed-service
+  parameters:
+    config:
+      HTML5Runtime_enabled: true
+      init_data:
+        instance:
+          destinations:
+          - Authentication: NoAuthentication
+            Name: ui5
+            ProxyType: Internet
+            Type: HTTP
+            URL: https://ui5.sap.com
+          existing_destinations_policy: update
+      version: 1.0.0
+    service: destination
+    service-name: zmanage_app-destination-service
+    service-plan: lite
+- name: zmanage_app_html_repo_host
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-name: zmanage_app-html5-app-host-service
+    service-plan: app-host
+- name: uaa_zmanage_app
+  type: org.cloudfoundry.managed-service
+  parameters:
+    path: ./xs-security.json
+    service: xsuaa
+    service-name: zmanage_app-xsuaa-service
+    service-plan: application
+parameters:
+  deploy_mode: html5-repo
